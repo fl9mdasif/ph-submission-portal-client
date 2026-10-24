@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PH Submission Portal — Client
 
-## Getting Started
+Next.js 16 (App Router) + TypeScript + TailwindCSS + ShadCN frontend for the Project Submission & Review Dashboard.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Next.js 16, React 19, TypeScript
+- TailwindCSS + ShadCN UI
+- Redux Toolkit + RTK Query (axios base query, JWT attached via interceptor)
+- react-hook-form + Zod for form validation
+
+## Setup
+
+1. Install dependencies:
+   ```
+   npm install
+   ```
+
+2. Copy the environment file:
+   ```
+   cp .env.local.example .env.local
+   ```
+
+   | Variable | Description |
+   |---|---|
+   | `NEXT_PUBLIC_API_URL` | Base URL of the server API, e.g. `http://localhost:5000/api/v1` |
+
+3. Start the dev server:
+   ```
+   npm run dev
+   ```
+
+   Runs on `http://localhost:3000`.
+
+## Build
+
+```
+npm run build
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Pages
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Route | Access | Description |
+|---|---|---|
+| `/` | Any | Redirects to `/login`, `/submit`, or `/dashboard` based on auth state and role |
+| `/login` | Public | Email/password login, redirects by role |
+| `/signup` | Public | Student registration |
+| `/submit` | STUDENT only | Project submission form |
+| `/dashboard` | MENTOR only | Stats cards, paginated review table, approve/reject, status filter |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Route protection is handled client-side by `useAuthGuard` ([src/hooks/useAuthGuard.ts](src/hooks/useAuthGuard.ts)), which decodes the JWT from `localStorage` and redirects based on role.
 
-## Learn More
+## Project structure
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+  app/
+    (auth)/login, (auth)/signup
+    (protected)/submit, (protected)/dashboard
+    layout.tsx          # wraps app in ReduxProvider + Toaster
+  components/ui/          # ShadCN components
+  contains/                # authKey, role/status constants (mirror server)
+  helpers/axios/            # axiosInstance (JWT interceptor), axiosBaseQuery (for RTK Query)
+  hooks/useAuthGuard.ts
+  redux/
+    api/authApi.ts, submissionApi.ts, baseApi.ts
+    store.ts, rootReducer.ts, hooks.ts, reduxProvider.tsx, tag-types.ts
+  services/auth.services.ts  # localStorage token + decoded user info
+  types/index.ts              # domain types mirroring server
+  utils/interface.ts           # Zod schemas mirroring server validation
+```
