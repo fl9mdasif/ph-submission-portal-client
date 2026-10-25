@@ -21,8 +21,15 @@ export const signupFormSchema = registerSchema
     path: ["confirmPassword"],
   });
 
+export const ASSIGNMENT_NUMBERS = Array.from({ length: 15 }, (_, i) => i + 1);
+
 // Mirrors server/src/app/modules/submission/validation.submission.ts exactly
 export const createSubmissionSchema = z.object({
+  assignmentNumber: z
+    .number({ message: "Select an assignment number" })
+    .int()
+    .min(1, "Select an assignment number")
+    .max(15, "Assignment number must be between 1 and 15"),
   projectName: z.string().trim().min(3, "Project name must be at least 3 characters"),
   repoUrl: z
     .string()

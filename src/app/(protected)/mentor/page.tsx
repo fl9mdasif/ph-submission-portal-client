@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -13,12 +13,14 @@ import {
   ChevronLeft,
   ChevronRight,
   ListFilter,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -42,7 +44,8 @@ import {
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { removeUser } from "@/services/auth.services";
 import { TSubmissionStatus } from "@/types";
-import { AppHeader } from "@/components/app-header";
+import { AppShell } from "@/components/app-shell";
+import { ASSIGNMENT_NUMBERS } from "@/utils/interface";
 
 const STATUS_CONFIG: Record<
   TSubmissionStatus,
@@ -92,6 +95,14 @@ export default function MentorPage() {
   const { user, checking } = useAuthGuard(["MENTOR"]);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<TSubmissionStatus | "ALL">("ALL");
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("ALL");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setSearchTerm(searchInput.trim()), 400);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const { data: statsData, isLoading: statsLoading } = useGetSubmissionStatsQuery(undefined, {
     skip: checking,
@@ -102,6 +113,8 @@ export default function MentorPage() {
       page,
       limit: LIMIT,
       status: statusFilter === "ALL" ? undefined : statusFilter,
+      assignmentNumber: assignmentFilter === "ALL" ? undefined : Number(assignmentFilter),
+      searchTerm: searchTerm || undefined,
     },
     { skip: checking },
   );
@@ -130,10 +143,8 @@ export default function MentorPage() {
   const total = statsData?.total ?? 0;
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <AppHeader name={user.name} role="MENTOR" onLogout={handleLogout} />
-
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+    <AppShell name={user.name} role="MENTOR" onLogout={handleLogout}>
+      <div className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Review Dashboard</h1>
           <p className="text-sm text-muted-foreground">
@@ -162,32 +173,66 @@ export default function MentorPage() {
         </div>
 
         <Card className="border-muted-foreground/10 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between gap-3 border-b [.border-b]:pb-4">
+          <CardHeader className="flex flex-col gap-3 border-b sm:flex-row sm:items-center sm:justify-between [.border-b]:pb-4">
             <CardTitle className="text-base">Submissions</CardTitle>
-            <Select
-              value={statusFilter}
-              onValueChange={(v) => {
-                setStatusFilter(v as TSubmissionStatus | "ALL");
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-44 gap-1.5">
-                <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ALL">All statuses</SelectItem>
-                <SelectItem value="PENDING">Pending</SelectItem>
-                <SelectItem value="APPROVED">Approved</SelectItem>
-                <SelectItem value="REJECTED">Rejected</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search project or student..."
+                  className="w-full pl-8 sm:w-56"
+                  value={searchInput}
+                  onChange={(e) => {
+                    setSearchInput(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <Select
+                value={assignmentFilter}
+                onValueChange={(v) => {
+                  setAssignmentFilter(v ?? "ALL");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-40">
+                  <SelectValue placeholder="Assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All assignments</SelectItem>
+                  {ASSIGNMENT_NUMBERS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      Assignment {n}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => {
+                  setStatusFilter(v as TSubmissionStatus | "ALL");
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger className="w-full gap-1.5 sm:w-44">
+                  <ListFilter className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All statuses</SelectItem>
+                  <SelectItem value="PENDING">Pending</SelectItem>
+                  <SelectItem value="APPROVED">Approved</SelectItem>
+                  <SelectItem value="REJECTED">Rejected</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="overflow-x-auto rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
+                    <TableHead>#</TableHead>
                     <TableHead>Project</TableHead>
                     <TableHead>Student</TableHead>
                     <TableHead>Links</TableHead>
@@ -200,7 +245,7 @@ export default function MentorPage() {
                   {listLoading || isFetching ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <TableRow key={i}>
-                        {Array.from({ length: 6 }).map((__, j) => (
+                        {Array.from({ length: 7 }).map((__, j) => (
                           <TableCell key={j}>
                             <Skeleton className="h-5 w-full" />
                           </TableCell>
@@ -209,7 +254,7 @@ export default function MentorPage() {
                     ))
                   ) : listData?.data.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-32 text-center text-muted-foreground">
+                      <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                         No submissions found
                       </TableCell>
                     </TableRow>
@@ -219,6 +264,7 @@ export default function MentorPage() {
                       const StatusIcon = status.icon;
                       return (
                         <TableRow key={submission.id}>
+                          <TableCell className="font-medium">{submission.assignmentNumber}</TableCell>
                           <TableCell className="max-w-56 truncate font-medium">
                             {submission.projectName}
                           </TableCell>
@@ -332,7 +378,7 @@ export default function MentorPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

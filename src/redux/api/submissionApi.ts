@@ -1,16 +1,21 @@
-import { TApiResponse, TSubmission, TSubmissionStats, TSubmissionStatus } from "@/types";
+import { TActivityLog, TApiResponse, TSubmission, TSubmissionStats, TSubmissionStatus } from "@/types";
 import { tagTypes } from "../tag-types";
 import { baseApi } from "./baseApi";
 
 export type TCreateSubmissionPayload = {
+  assignmentNumber: number;
   projectName: string;
   repoUrl: string;
   liveLink?: string;
   description: string;
 };
 
+export type TEditSubmissionPayload = TCreateSubmissionPayload & { id: string };
+
 export type TGetSubmissionsParams = {
   status?: TSubmissionStatus;
+  assignmentNumber?: number;
+  searchTerm?: string;
   page?: number;
   limit?: number;
 };
@@ -30,7 +35,26 @@ const submissionApi = baseApi.injectEndpoints({
         data,
       }),
       transformResponse: (response: TApiResponse<TSubmission>) => response.data,
-      invalidatesTags: [tagTypes.submissions, tagTypes.stats],
+      invalidatesTags: [tagTypes.submissions, tagTypes.mySubmissions, tagTypes.stats],
+    }),
+
+    editSubmission: build.mutation<TSubmission, TEditSubmissionPayload>({
+      query: ({ id, ...data }) => ({
+        url: `/submissions/${id}`,
+        method: "PATCH",
+        data,
+      }),
+      transformResponse: (response: TApiResponse<TSubmission>) => response.data,
+      invalidatesTags: [tagTypes.submissions, tagTypes.mySubmissions, tagTypes.stats],
+    }),
+
+    getMySubmissions: build.query<TSubmission[], void>({
+      query: () => ({
+        url: "/submissions/my",
+        method: "GET",
+      }),
+      transformResponse: (response: TApiResponse<TSubmission[]>) => response.data,
+      providesTags: [tagTypes.mySubmissions],
     }),
 
     getSubmissions: build.query<
@@ -65,14 +89,33 @@ const submissionApi = baseApi.injectEndpoints({
         data,
       }),
       transformResponse: (response: TApiResponse<TSubmission>) => response.data,
-      invalidatesTags: [tagTypes.submissions, tagTypes.stats],
+      invalidatesTags: [tagTypes.submissions, tagTypes.stats, tagTypes.activity],
+    }),
+
+    getMentorActivity: build.query<
+      { data: TActivityLog[]; meta: TApiResponse<TActivityLog[]>["meta"] },
+      { page?: number; limit?: number } | void
+    >({
+      query: (params) => ({
+        url: "/submissions/activity",
+        method: "GET",
+        params: params || undefined,
+      }),
+      transformResponse: (response: TApiResponse<TActivityLog[]>) => ({
+        data: response.data,
+        meta: response.meta,
+      }),
+      providesTags: [tagTypes.activity],
     }),
   }),
 });
 
 export const {
   useCreateSubmissionMutation,
+  useEditSubmissionMutation,
+  useGetMySubmissionsQuery,
   useGetSubmissionsQuery,
   useGetSubmissionStatsQuery,
   useUpdateSubmissionStatusMutation,
+  useGetMentorActivityQuery,
 } = submissionApi;

@@ -42,12 +42,14 @@ export type TJwtPayload = {
 
 export type TSubmission = {
   id: string;
+  assignmentNumber: number;
   projectName: string;
   repoUrl: string;
   liveLink?: string | null;
   description: string;
   status: TSubmissionStatus;
   feedback?: string | null;
+  edited: boolean;
   studentId: string;
   student: { name: string; email: string };
   createdAt: string;
@@ -59,4 +61,13 @@ export type TSubmissionStats = {
   APPROVED: number;
   REJECTED: number;
   total: number;
+};
+
+export type TActivityLog = {
+  id: string;
+  mentorId: string;
+  submissionId: string;
+  action: "APPROVED_SUBMISSION" | "REJECTED_SUBMISSION";
+  detail?: string | null;
+  createdAt: string;
 };
