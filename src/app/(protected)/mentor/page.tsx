@@ -14,6 +14,8 @@ import {
   ChevronRight,
   ListFilter,
   Search,
+  Eye,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,13 +39,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   useGetSubmissionsQuery,
   useGetSubmissionStatsQuery,
   useUpdateSubmissionStatusMutation,
 } from "@/redux/api/submissionApi";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { removeUser } from "@/services/auth.services";
-import { TSubmissionStatus } from "@/types";
+import { TSubmission, TSubmissionStatus } from "@/types";
 import { AppShell } from "@/components/app-shell";
 import { ASSIGNMENT_NUMBERS } from "@/utils/interface";
 
@@ -98,6 +107,7 @@ export default function MentorPage() {
   const [assignmentFilter, setAssignmentFilter] = useState<string>("ALL");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewing, setViewing] = useState<TSubmission | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setSearchTerm(searchInput.trim()), 400);
@@ -315,31 +325,44 @@ export default function MentorPage() {
                             {new Date(submission.createdAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            {submission.status === "PENDING" ? (
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  disabled={isUpdating}
-                                  onClick={() => handleAction(submission.id, "APPROVED")}
-                                  className="gap-1 bg-emerald-600 hover:bg-emerald-700"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  disabled={isUpdating}
-                                  onClick={() => handleAction(submission.id, "REJECTED")}
-                                  className="gap-1"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                  Reject
-                                </Button>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">Reviewed</span>
-                            )}
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => setViewing(submission)}
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                View
+                              </Button>
+                              {submission.status === "PENDING" ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    disabled={isUpdating}
+                                    onClick={() => handleAction(submission.id, "APPROVED")}
+                                    className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={isUpdating}
+                                    onClick={() => handleAction(submission.id, "REJECTED")}
+                                    className="gap-1"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                    Reject
+                                  </Button>
+                                </>
+                              ) : (
+                                <span className="self-center text-xs text-muted-foreground">
+                                  Reviewed
+                                </span>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -379,6 +402,122 @@ export default function MentorPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!viewing} onOpenChange={(open) => !open && setViewing(null)}>
+        <DialogContent className="sm:max-w-lg">
+          {viewing && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {viewing.projectName}
+                  <Badge variant="outline" className={`gap-1 ${STATUS_CONFIG[viewing.status].className}`}>
+                    {(() => {
+                      const Icon = STATUS_CONFIG[viewing.status].icon;
+                      return <Icon className="h-3 w-3" />;
+                    })()}
+                    {STATUS_CONFIG[viewing.status].label}
+                  </Badge>
+                </DialogTitle>
+                <DialogDescription>Assignment {viewing.assignmentNumber}</DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-9 w-9">
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                      {initialsOf(viewing.student.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="leading-tight">
+                    <p className="font-medium">{viewing.student.name}</p>
+                    <p className="text-xs text-muted-foreground">{viewing.student.email}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="mb-1 font-medium text-muted-foreground">Description</p>
+                  <p className="whitespace-pre-wrap rounded-md border bg-muted/30 p-3 text-foreground">
+                    {viewing.description}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-4">
+                  <a
+                    href={viewing.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-primary hover:underline"
+                  >
+                    Repository <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                  {viewing.liveLink && (
+                    <a
+                      href={viewing.liveLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      Live Preview <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                </div>
+
+                {viewing.edited && (
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Pencil className="h-3 w-3" />
+                    This submission has been edited once by the student.
+                  </div>
+                )}
+
+                {viewing.feedback && (
+                  <div>
+                    <p className="mb-1 font-medium text-muted-foreground">Your feedback</p>
+                    <p className="rounded-md border border-blue-200 bg-blue-50 p-3 text-blue-900">
+                      {viewing.feedback}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground">
+                  Submitted {new Date(viewing.createdAt).toLocaleString()}
+                  {viewing.updatedAt !== viewing.createdAt &&
+                    ` · Updated ${new Date(viewing.updatedAt).toLocaleString()}`}
+                </p>
+
+                {viewing.status === "PENDING" && (
+                  <div className="flex justify-end gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      disabled={isUpdating}
+                      onClick={async () => {
+                        await handleAction(viewing.id, "APPROVED");
+                        setViewing(null);
+                      }}
+                      className="gap-1 bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={isUpdating}
+                      onClick={async () => {
+                        await handleAction(viewing.id, "REJECTED");
+                        setViewing(null);
+                      }}
+                      className="gap-1"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Reject
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
