@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getUserInfo, isLoggedIn } from "@/services/auth.services";
 import { TJwtPayload, TRole } from "@/types";
+import { ROLE_HOME_ROUTE } from "@/contains/role";
 
 export const useAuthGuard = (allowedRoles: TRole[]) => {
   const router = useRouter();
@@ -18,7 +19,7 @@ export const useAuthGuard = (allowedRoles: TRole[]) => {
 
     const info = getUserInfo() as TJwtPayload;
     if (!allowedRoles.includes(info.role)) {
-      router.replace(info.role === "MENTOR" ? "/dashboard" : "/submit");
+      router.replace(ROLE_HOME_ROUTE[info.role]);
       return;
     }
 

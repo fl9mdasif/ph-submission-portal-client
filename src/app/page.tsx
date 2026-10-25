@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isLoggedIn, getUserInfo } from "@/services/auth.services";
 import { TJwtPayload } from "@/types";
+import { ROLE_HOME_ROUTE } from "@/contains/role";
 
 export default function Home() {
   const router = useRouter();
@@ -11,7 +12,7 @@ export default function Home() {
   useEffect(() => {
     if (isLoggedIn()) {
       const info = getUserInfo() as TJwtPayload;
-      router.replace(info.role === "MENTOR" ? "/dashboard" : "/submit");
+      router.replace(ROLE_HOME_ROUTE[info.role]);
     } else {
       router.replace("/login");
     }

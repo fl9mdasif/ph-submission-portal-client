@@ -9,3 +9,8 @@ export const SUBMISSION_STATUS = {
   APPROVED: "APPROVED",
   REJECTED: "REJECTED",
 } as const;
+
+export const ROLE_HOME_ROUTE: Record<keyof typeof USER_ROLE, string> = {
+  STUDENT: "/student",
+  MENTOR: "/mentor",
+};
